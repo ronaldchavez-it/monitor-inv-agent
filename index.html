@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#063b61">
+  <title>Control Diario de Reparto</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <style>
+    :root {
+      --azul: #063b61;
+      --azul-2: #07527a;
+      --celeste: #079bb0;
+      --celeste-2: #00aec4;
+      --fondo: #edf4f7;
+      --texto: #16364b;
+      --borde: #cfdee6;
+      --blanco: #ffffff;
+      --rojo: #e53935;
+      --verde: #16885c;
+      --sombra: 0 8px 24px rgba(20, 61, 84, .09);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #f6fafc 0%, var(--fondo) 100%);
+      color: var(--texto);
+    }
+
+    .app {
+      width: min(100%, 480px);
+      margin: 0 auto;
+      padding: 14px 13px 28px;
+    }
+
+    .encabezado {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 72px;
+      padding: 10px 14px;
+      border-radius: 7px;
+      color: white;
+      background: linear-gradient(135deg, #063252, #06476e);
+      box-shadow: var(--sombra);
+    }
+
+    .logo {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: white;
+      padding: 3px;
+    }
+
+    .encabezado h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .encabezado p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      opacity: .92;
+    }
+
+    .tarjeta {
+      margin-top: 10px;
+      padding: 15px;
+      border-radius: 11px;
+      background: var(--blanco);
+      box-shadow: var(--sombra);
+    }
+
+    .titulo-seccion {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 12px;
+      color: var(--azul);
+      font-size: 17px;
+    }
+
+    .icono {
+      display: inline-grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      color: var(--celeste);
+      font-size: 21px;
+    }
+
+    label {
+      display: block;
+      margin: 9px 0 5px;
+      color: var(--azul);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--borde);
+      border-radius: 7px;
+      background: #fbfdfe;
+      color: var(--texto);
+      padding: 10px 11px;
+      font: inherit;
+      font-size: 14px;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--celeste);
+      box-shadow: 0 0 0 3px rgba(7, 155, 176, .12);
+    }
+
+    input[readonly] { background: #f1f7f9; }
+
+    textarea {
+      min-height: 68px;
+      resize: vertical;
+    }
+
+    .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .botones-captura { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    button, .boton-archivo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      min-height: 42px;
+      border: 0;
+      border-radius: 7px;
+      padding: 10px 12px;
+      color: white;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform .15s ease, filter .15s ease;
+    }
+
+    button:hover, .boton-archivo:hover { filter: brightness(.95); }
+    button:active, .boton-archivo:active { transform: scale(.99); }
+    button:disabled { cursor: not-allowed; opacity: .65; }
+
+    .btn-azul { background: var(--azul); }
+    .btn-celeste { background: linear-gradient(135deg, var(--celeste), var(--celeste-2)); }
+    .btn-borde { color: var(--celeste); background: white; border: 1px solid var(--celeste); }
+    .btn-word { background: #0877c9; }
+    .btn-pdf { background: var(--rojo); }
+    .btn-whatsapp { background: #063b5a; }
+
+    .boton-archivo input { display: none; }
+    .acciones { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 9px; }
+    .separacion { margin-top: 9px; }
+
+    .vista-imagen {
+      display: none;
+      width: 100%;
+      max-height: 190px;
+      margin-top: 10px;
+      object-fit: contain;
+      border: 1px solid var(--borde);
+      border-radius: 8px;
+      background: #f5f8fa;
+    }
+
+    .calculo {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      color: #17627b;
+      background: #eaf7fa;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .lista-productos { display: grid; gap: 8px; margin-top: 10px; }
+
+    .producto-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--borde);
+      border-radius: 8px;
+      background: #f9fcfd;
+      font-size: 12px;
+    }
+
+    .producto-item strong { display: block; color: var(--azul); margin-bottom: 3px; }
+    .eliminar { width: 34px; min-height: 34px; padding: 4px; background: #e65050; }
+
+    .estado {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .estado.ok { display: block; color: #0a6642; background: #e6f7ef; }
+    .estado.error { display: block; color: #9d2020; background: #fdecec; }
+    .estado.proceso { display: block; color: #155b79; background: #eaf6fb; }
+
+    #reporteExportacion { background: white; }
+
+    @media (max-width: 370px) {
+      .fila, .botones-captura { grid-template-columns: 1fr; }
+      .acciones { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="encabezado">
+      <img src="Logo.jpg" class="logo" alt="Logo">
+      <div>
+        <h1>Control Diario de Reparto</h1>
+        <p>Registro de productos entregados</p>
+      </div>
+    </header>
+
+    <section class="tarjeta">
+      <h2 class="titulo-seccion"><span class="icono">📷</span> Capturar información</h2>
+
+      <div class="botones-captura">
+        <label class="boton-archivo btn-azul">
+          📷 Tomar foto
+          <input id="camara" type="file" accept="image/*" capture="environment">
+        </label>
+        <label class="boton-archivo btn-celeste">
+          🖼 Elegir imagen
+          <input id="galeria" type="file" accept="image/*">
+        </label>
+      </div>
+
+      <img id="vistaImagen" class="vista-imagen" alt="Vista previa">
+
+      <label for="descripcion">Describe el reparto</label>
+      <textarea id="descripcion" placeholder="Ejemplo: Agua 600 ml, inicial 24, entregadas 10, precio $0.75"></textarea>
+
+      <button id="procesar" class="btn-celeste separacion" type="button">✨ Procesar descripción</button>
+    </section>
+
+    <section class="tarjeta">
+      <h2 class="titulo-seccion"><span class="icono">📄</span> Revisar registro</h2>
+
+      <label for="producto">Producto</label>
+      <input id="producto" type="text" placeholder="Nombre del producto">
+
+      <div class="fila">
+        <div>
+          <label for="cantidadInicial">Cantidad inicial</label>
+          <input id="cantidadInicial" type="number" min="0" step="1" value="0">
+        </div>
+        <div>
+          <label for="cantidadEntregada">Cantidad entregada</label>
+          <input id="cantidadEntregada" type="number" min="0" step="1" value="0">
+        </div>
+      </div>
+
+      <div class="fila">
+        <div>
+          <label for="cantidadRestante">Cantidad restante</label>
+          <input id="cantidadRestante" type="number" readonly value="0">
+        </div>
+        <div>
+          <label for="precio">Precio</label>
+          <input id="precio" type="number" min="0" step="0.01" value="0.00">
+        </div>
+      </div>
+
+      <div class="fila">
+        <div>
+          <label for="total">Total</label>
+          <input id="total" type="text" readonly value="$0.00">
+        </div>
+        <div>
+          <label for="valorRestante">Valor restante</label>
+          <input id="valorRestante" type="text" readonly value="$0.00">
+        </div>
+      </div>
+
+      <div id="calculo" class="calculo">▦ Cálculos: 0 - 0 = 0 | 0 × $0.00 = $0.00 | 0 × $0.00 = $0.00</div>
+
+      <button id="agregar" class="btn-borde separacion" type="button">＋ Agregar producto</button>
+      <div id="listaProductos" class="lista-productos"></div>
+    </section>
+
+    <section class="tarjeta">
+      <button id="guardar" class="btn-celeste" type="button">💾 Guardar registro</button>
+      <div class="acciones">
+        <button id="word" class="btn-word" type="button">📝 Word</button>
+        <button id="pdf" class="btn-pdf" type="button">📄 PDF</button>
+        <button id="whatsapp" class="btn-whatsapp" type="button">◉ WhatsApp</button>
+      </div>
+      <div id="estado" class="estado"></div>
+    </section>
+
+    <div id="reporteExportacion" hidden></div>
+  </main>
+
+  <script>
+    const FUNCTION_URL = 'https://func-inv-westus-02-cafcdda6cudub0hh.westus3-01.azurewebsites.net/api/ProcessInventory';
+
+    const $ = id => document.getElementById(id);
+    const productos = [];
+
+    const campos = {
+      producto: $('producto'),
+      inicial: $('cantidadInicial'),
+      entregada: $('cantidadEntregada'),
+      restante: $('cantidadRestante'),
+      precio: $('precio'),
+      total: $('total'),
+      valorRestante: $('valorRestante')
+    };
+
+    function dinero(valor) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency', currency: 'USD', minimumFractionDigits: 2
+      }).format(Number(valor) || 0);
+    }
+
+    function calcular() {
+      const inicial = Number(campos.inicial.value) || 0;
+      const entregada = Number(campos.entregada.value) || 0;
+      const precio = Number(campos.precio.value) || 0;
+      const restante = Math.max(0, inicial - entregada);
+      const total = entregada * precio;
+      const valorRestante = restante * precio;
+
+      campos.restante.value = restante;
+      campos.total.value = dinero(total);
+      campos.valorRestante.value = dinero(valorRestante);
+      $('calculo').textContent = `▦ Cálculos: ${inicial} - ${entregada} = ${restante} | ${entregada} × ${dinero(precio)} = ${dinero(total)} | ${restante} × ${dinero(precio)} = ${dinero(valorRestante)}`;
+    }
+
+    campos.inicial.addEventListener('input', calcular);
+    campos.entregada.addEventListener('input', calcular);
+    campos.precio.addEventListener('input', calcular);
+
+    function mostrarImagen(archivo) {
+      if (!archivo) return;
+      const lector = new FileReader();
+      lector.onload = e => {
+        $('vistaImagen').src = e.target.result;
+        $('vistaImagen').style.display = 'block';
+      };
+      lector.readAsDataURL(archivo);
+    }
+
+    $('camara').addEventListener('change', e => mostrarImagen(e.target.files[0]));
+    $('galeria').addEventListener('change', e => mostrarImagen(e.target.files[0]));
+
+    function extraerNumero(texto, patrones) {
+      for (const patron of patrones) {
+        const coincidencia = texto.match(patron);
+        if (coincidencia) return Number(coincidencia[1].replace(',', '.'));
+      }
+      return null;
+    }
+
+    $('procesar').addEventListener('click', () => {
+      const texto = $('descripcion').value.trim();
+      if (!texto) return estado('Escribe la descripción del reparto.', 'error');
+
+      const inicial = extraerNumero(texto, [/inicial\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i, /cantidad inicial\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i]);
+      const entregada = extraerNumero(texto, [/entregad(?:a|as|o|os)\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i, /cantidad entregada\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i]);
+      const precio = extraerNumero(texto, [/precio\s*\$?\s*[:=]?\s*\$?\s*(\d+(?:[.,]\d+)?)/i]);
+
+      let producto = texto.split(/,|;|\binicial\b|\bcantidad inicial\b/i)[0].trim();
+      producto = producto.replace(/^producto\s*[:=-]?\s*/i, '').trim();
+
+      campos.producto.value = producto;
+      if (inicial !== null) campos.inicial.value = inicial;
+      if (entregada !== null) campos.entregada.value = entregada;
+      if (precio !== null) campos.precio.value = precio;
+      calcular();
+      estado('Descripción procesada. Revisa los datos.', 'ok');
+    });
+
+    function productoActual() {
+      const Producto = campos.producto.value.trim();
+      const CantidadInicial = Number(campos.inicial.value);
+      const CantidadEntregada = Number(campos.entregada.value);
+      const Precio = Number(campos.precio.value);
+
+      if (!Producto) throw new Error('Escribe el nombre del producto.');
+      if (![CantidadInicial, CantidadEntregada, Precio].every(Number.isFinite)) throw new Error('Completa cantidades y precio.');
+      if (CantidadInicial < 0 || CantidadEntregada < 0 || Precio < 0) throw new Error('No se permiten valores negativos.');
+      if (CantidadEntregada > CantidadInicial) throw new Error('La cantidad entregada supera la cantidad inicial.');
+
+      const CantidadRestante = CantidadInicial - CantidadEntregada;
+      const Total = Number((CantidadEntregada * Precio).toFixed(2));
+      const ValorRestante = Number((CantidadRestante * Precio).toFixed(2));
+
+      return { Producto, CantidadInicial, CantidadEntregada, CantidadRestante, Precio, Total, ValorRestante };
+    }
+
+    function limpiarFormulario() {
+      campos.producto.value = '';
+      campos.inicial.value = 0;
+      campos.entregada.value = 0;
+      campos.precio.value = '0.00';
+      calcular();
+    }
+
+    function renderizarProductos() {
+      $('listaProductos').innerHTML = productos.map((p, i) => `
+        <div class="producto-item">
+          <div>
+            <strong>${escapar(p.Producto)}</strong>
+            Inicial: ${p.CantidadInicial} · Entregada: ${p.CantidadEntregada} · Restante: ${p.CantidadRestante}<br>
+            Total: ${dinero(p.Total)} · Valor restante: ${dinero(p.ValorRestante)}
+          </div>
+          <button class="eliminar" type="button" data-indice="${i}" aria-label="Eliminar">×</button>
+        </div>
+      `).join('');
+
+      document.querySelectorAll('.eliminar').forEach(boton => {
+        boton.addEventListener('click', () => {
+          productos.splice(Number(boton.dataset.indice), 1);
+          renderizarProductos();
+        });
+      });
+    }
+
+    $('agregar').addEventListener('click', () => {
+      try {
+        productos.push(productoActual());
+        renderizarProductos();
+        limpiarFormulario();
+        estado('Producto agregado.', 'ok');
+      } catch (error) {
+        estado(error.message, 'error');
+      }
+    });
+
+    async function guardarProducto(producto) {
+      const respuesta = await fetch(FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(producto)
+      });
+
+      let data = {};
+      try { data = await respuesta.json(); } catch (_) {}
+      if (!respuesta.ok || data.success === false) throw new Error(data.error || `Error HTTP ${respuesta.status}`);
+      return data;
+    }
+
+    $('guardar').addEventListener('click', async () => {
+      let registros = [...productos];
+      if (!registros.length) {
+        try { registros = [productoActual()]; }
+        catch (error) { return estado(error.message, 'error'); }
+      }
+
+      $('guardar').disabled = true;
+      estado(`Guardando ${registros.length} registro(s)...`, 'proceso');
+
+      try {
+        for (const producto of registros) await guardarProducto(producto);
+        estado(`${registros.length} registro(s) guardado(s) correctamente.`, 'ok');
+        productos.length = 0;
+        renderizarProductos();
+        limpiarFormulario();
+      } catch (error) {
+        estado(`No se pudo guardar: ${error.message}`, 'error');
+      } finally {
+        $('guardar').disabled = false;
+      }
+    });
+
+    function datosReporte() {
+      if (productos.length) return [...productos];
+      try { return [productoActual()]; } catch (_) { return []; }
+    }
+
+    function reporteHTML(datos) {
+      const fecha = new Intl.DateTimeFormat('es-SV', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+      return `
+        <div style="font-family:Arial;padding:22px;color:#17384d">
+          <h1 style="color:#063b61">Control Diario de Reparto</h1>
+          <p>${fecha}</p>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:#063b61;color:white">
+              <th style="padding:8px;border:1px solid #ccc">Producto</th>
+              <th style="padding:8px;border:1px solid #ccc">Inicial</th>
+              <th style="padding:8px;border:1px solid #ccc">Entregada</th>
+              <th style="padding:8px;border:1px solid #ccc">Restante</th>
+              <th style="padding:8px;border:1px solid #ccc">Precio</th>
+              <th style="padding:8px;border:1px solid #ccc">Total</th>
+              <th style="padding:8px;border:1px solid #ccc">Valor restante</th>
+            </tr></thead>
+            <tbody>${datos.map(p => `<tr>
+              <td style="padding:8px;border:1px solid #ccc">${escapar(p.Producto)}</td>
+              <td style="padding:8px;border:1px solid #ccc">${p.CantidadInicial}</td>
+              <td style="padding:8px;border:1px solid #ccc">${p.CantidadEntregada}</td>
+              <td style="padding:8px;border:1px solid #ccc">${p.CantidadRestante}</td>
+              <td style="padding:8px;border:1px solid #ccc">${dinero(p.Precio)}</td>
+              <td style="padding:8px;border:1px solid #ccc">${dinero(p.Total)}</td>
+              <td style="padding:8px;border:1px solid #ccc">${dinero(p.ValorRestante)}</td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>`;
+    }
+
+    $('pdf').addEventListener('click', () => {
+      const datos = datosReporte();
+      if (!datos.length) return estado('No hay datos para exportar.', 'error');
+      const contenedor = $('reporteExportacion');
+      contenedor.innerHTML = reporteHTML(datos);
+      contenedor.hidden = false;
+      html2pdf().set({
+        margin: 8,
+        filename: 'control-diario-reparto.pdf',
+        image: { type: 'jpeg', quality: .98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      }).from(contenedor).save().finally(() => { contenedor.hidden = true; });
+    });
+
+    $('word').addEventListener('click', async () => {
+      const datos = datosReporte();
+      if (!datos.length) return estado('No hay datos para exportar.', 'error');
+
+      const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType } = docx;
+      const encabezados = ['Producto', 'Inicial', 'Entregada', 'Restante', 'Precio', 'Total', 'Valor restante'];
+      const filas = [
+        new TableRow({ children: encabezados.map(t => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: t, bold: true })] })] })) }),
+        ...datos.map(p => new TableRow({ children: [p.Producto, p.CantidadInicial, p.CantidadEntregada, p.CantidadRestante, dinero(p.Precio), dinero(p.Total), dinero(p.ValorRestante)].map(v => new TableCell({ children: [new Paragraph(String(v))] })) }))
+      ];
+
+      const documento = new Document({ sections: [{ children: [
+        new Paragraph({ children: [new TextRun({ text: 'Control Diario de Reparto', bold: true, size: 32 })] }),
+        new Paragraph(new Date().toLocaleString('es-SV')),
+        new Table({ rows: filas, width: { size: 100, type: WidthType.PERCENTAGE } })
+      ] }] });
+      const blob = await Packer.toBlob(documento);
+      saveAs(blob, 'control-diario-reparto.docx');
+    });
+
+    $('whatsapp').addEventListener('click', async () => {
+      const datos = datosReporte();
+      if (!datos.length) return estado('No hay datos para compartir.', 'error');
+      const texto = ['*Control Diario de Reparto*', ...datos.map(p => `${p.Producto}: inicial ${p.CantidadInicial}, entregada ${p.CantidadEntregada}, restante ${p.CantidadRestante}, total ${dinero(p.Total)}, valor restante ${dinero(p.ValorRestante)}`)].join('\n');
+
+      if (navigator.share) {
+        try { await navigator.share({ title: 'Control Diario de Reparto', text: texto }); return; }
+        catch (error) { if (error.name === 'AbortError') return; }
+      }
+      window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer');
+    });
+
+    function estado(mensaje, tipo) {
+      const elemento = $('estado');
+      elemento.textContent = mensaje;
+      elemento.className = `estado ${tipo}`;
+    }
+
+    function escapar(texto) {
+      const div = document.createElement('div');
+      div.textContent = String(texto);
+      return div.innerHTML;
+    }
+
+    calcular();
+  </script>
+</body>
+</html>
